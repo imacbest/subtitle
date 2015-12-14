@@ -1,13 +1,8 @@
 package nl.imacbest.subtitle;
 
-import org.apache.commons.io.FilenameUtils;
-
 import java.io.File;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
+
 import java.util.logging.Logger;
-import java.util.regex.Pattern;
 
 
 /**
@@ -17,82 +12,43 @@ public class App {
     private Logger log = Logger.getLogger(getClass().getName());
     private StringReader reader = new StringReader();
 
-    private HashMap<Integer, HashMap<Integer, HashMap<Sort, ArrayList<File>>>> seasons = new HashMap<Integer, HashMap<Integer, HashMap<Sort, ArrayList<File>>>>();
-
+    private Serie serie;
 
     public static void main(String[] args) {
         App ap = new App();
     }
 
     public App() {
-        readDirective("");
-        showAllFiles();
+        String path = "Path to directive";
+        serie = new Serie("Serie name");
+        readDirective(path);
+        //showAllFiles();
 
-    }
+        System.out.println("Serie: " + serie.getTitle());
+        for(Season season : serie.getSeasons()){
+            System.out.println("SEASON: "+String.format("%02d", season.getSeasonNr()));
 
-    private void showAllFiles() {
-        Iterator<Integer> SEASONSITERATOR = seasons.keySet().iterator();
-        while (SEASONSITERATOR.hasNext()) {
-            Integer key = SEASONSITERATOR.next();
-            System.out.println("=== SEASON #" + key + " ===");
+//            (new File(path + "\\S"+ String.format("%02d", season.getSeasonNr()))).mkdir();
 
-            HashMap<Integer, HashMap<Sort, ArrayList<File>>> season = seasons.get(key);
-            Iterator<Integer> EPISODEITERATOR = season.keySet().iterator();
-            while (EPISODEITERATOR.hasNext()) {
-                Integer eppisodeKey = EPISODEITERATOR.next();
-                System.out.println("\t=== EPISODE #" + eppisodeKey + " ===");
+            for(Episode episode : season.getEpisodes()){
+                System.out.println("\tEpisode: " + episode.getEppisodeNr());
 
-                HashMap<Sort, ArrayList<File>> episode = season.get(eppisodeKey);
+//                    (new File(path + "\\S"+ String.format("%02d", season.getSeasonNr())+ "\\S"+ String.format("%02d", season.getSeasonNr())
+//                            +"E"+ String.format("%02d", episode.getEppisodeNr()) )).mkdir();
 
-                ArrayList<File> vid = episode.get(Sort.VIDEO);
-                System.out.println("\t\t==== VID =====");
-                for (File temp : vid) {
-                    System.out.println("\t\t\"" + temp.getAbsolutePath()+ '"');
-                    //System.out.println(temp.getParent());
-                }
-
-                System.out.println("\t\t==== SRT =====");
-                ArrayList<File> srt = episode.get(Sort.SUBTITLE);
-                for (File temp : srt) {
-                    System.out.println("\t\t\"" + temp.getAbsolutePath()+ '"');
-
-                }
-
+                    System.out.println("\t\tVideo files:");
+                    for(VideoFile videoFile : episode.getVideoFiles()){
+                        System.out.println("\t\t\t" + videoFile.getFile().getName());
+                        System.out.println(videoFile.getFile().getParent());
+                    }
+                    System.out.println("\t\tSRT files:");
+                    for(Subtitle subtitle : episode.getSubtitles()){
+                        System.out.println("\t\t\t" + subtitle.getFile().getName());
+                    }
             }
 
         }
     }
-
-    private void putFileInEpisode(File file) {
-        reader.setFileSort(file);
-        reader.stringReader(file.getName());
-        if (reader.getSort() != Sort.UNKNOWN) {
-            if (!seasons.containsKey(reader.getSeason())) {
-                seasons.put(reader.getSeason(), new HashMap<Integer, HashMap<Sort, ArrayList<File>>>());
-            }
-            HashMap<Integer, HashMap<Sort, ArrayList<File>>> season = seasons.get(reader.getSeason());
-
-            if (!season.containsKey(reader.getEpisode())) {
-                season.put(reader.getEpisode(), new HashMap<Sort, ArrayList<File>>());
-            }
-            HashMap<Sort, ArrayList<File>> episode = season.get(reader.getEpisode());
-
-            if (!episode.containsKey(Sort.SUBTITLE)) {
-                episode.put(Sort.SUBTITLE, new ArrayList<File>());
-            }
-            if (!episode.containsKey(Sort.VIDEO)) {
-                episode.put(Sort.VIDEO, new ArrayList<File>());
-            }
-
-
-            ArrayList<File> files = episode.get(reader.getSort());
-            files.add(file);
-        } else {
-            log.info("File type was unknown. File is:" + file.getName());
-        }
-    }
-
-
     private void readDirective(String path) {
         File[] files = new File(path).listFiles();
         showFiles(files);
@@ -100,20 +56,17 @@ public class App {
 
     private void showFiles(File[] files) {
         for (File file : files) {
+            reader.setFileSort(file);
+            reader.stringReader(file.getName());
             if (file.isFile()) {
-                reader.stringReader(file.getName());
-                if (reader.getSort() != Sort.UNKNOWN) {
-                    putFileInEpisode(file);
+                if (reader.getSort() == Sort.SUBTITLE || reader.getSort() == Sort.VIDEO) {
+                    Season season = serie.hasSeason(reader.getSeason());
+                    Episode episode = season.hasEpiside(reader.getEpisode());
+                    episode.addFile(file, reader.getSort());
                 }
             } else if (file.isDirectory()) {
                 showFiles(file.listFiles());
             }
-//            if (file.isDirectory()) {
-//                System.out.println("Directory: " + file.getName());
-//                showFiles(file.listFiles()); // Calls same method again.
-//            } else {
-//                System.out.println("File: " + file.getName());
-//            }
         }
     }
 
